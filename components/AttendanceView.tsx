@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Database } from '../types/supabase';
-import { useGeolocation, calculateDistance } from '../hooks/useGeolocation';
+import { useGeolocation } from '../hooks/useGeolocation';
+import { useCamera } from '../hooks/useCamera';
+import { calculateDistance, isWithinGeofence, getGeofenceStatus } from '../utils/geofencing';
 import { Button } from './shared/Button';
 import { Select } from './shared/Select';
 import { Spinner } from './shared/Spinner';
-import { Loader, CheckCircle, AlertTriangle, MapPin, User, RefreshCw } from 'lucide-react';
+import { CameraCapture } from './shared/CameraCapture';
+import { Loader, CheckCircle, AlertTriangle, MapPin, User, RefreshCw, Camera, Shield } from 'lucide-react';
 
 type Guard = Database['public']['Tables']['guards']['Row'];
 type Location = Database['public']['Tables']['locations']['Row'];
@@ -23,6 +26,7 @@ export const AttendanceView: React.FC = () => {
     const [selectedLocationId, setSelectedLocationId] = useState('');
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
     const { data: geoData, loading: geoLoading, error: geoError, refresh: refreshGeo } = useGeolocation();
+    const camera = useCamera();
     
     const fetchData = useCallback(async () => {
         setLoadingData(true);
@@ -45,24 +49,48 @@ export const AttendanceView: React.FC = () => {
 
     const handleCheckIn = async () => {
         setStatusMessage(null);
+        
+        // Validation checks
         if (!selectedGuardId || !selectedLocationId) {
             setStatusMessage({ type: 'error', text: 'Please select a guard and location.' });
             return;
         }
+        
         if (geoError || !geoData) {
             setStatusMessage({ type: 'error', text: `GPS Error: ${geoError?.message || 'Could not get location.'}` });
             return;
         }
+        
+        if (!camera.photoDataUrl) {
+            setStatusMessage({ type: 'error', text: 'Please take a verification photo before checking in.' });
+            return;
+        }
+        
         const location = locations.find(l => l.id === Number(selectedLocationId));
         if (!location) return;
 
-        const distance = calculateDistance(geoData.coords.latitude, geoData.coords.longitude, location.latitude, location.longitude);
-        const isVerified = distance <= location.geofence_radius_meters;
+        // Enhanced geofencing check
+        const geofenceStatus = getGeofenceStatus(
+            geoData.coords.latitude,
+            geoData.coords.longitude,
+            location.latitude,
+            location.longitude,
+            location.geofence_radius_meters
+        );
+
+        // Block check-in if outside geofence
+        if (!geofenceStatus.isWithin) {
+            setStatusMessage({ 
+                type: 'error', 
+                text: `Check-in denied: ${geofenceStatus.message}. Please move closer to the site location.` 
+            });
+            return;
+        }
 
         const { error } = await supabase.from('attendance').insert({
             guard_id: Number(selectedGuardId),
             location_id: Number(selectedLocationId),
-            is_within_geofence: isVerified,
+            is_within_geofence: geofenceStatus.isWithin,
             status: 'Pending Approval',
             check_in_time: new Date().toISOString(),
         });
@@ -70,7 +98,14 @@ export const AttendanceView: React.FC = () => {
         if (error) {
             setStatusMessage({ type: 'error', text: `Failed to save check-in: ${error.message}` });
         } else {
-            setStatusMessage({ type: 'success', text: `Check-in recorded! You are ${distance.toFixed(0)}m from site. Pending supervisor approval.` });
+            setStatusMessage({ 
+                type: 'success', 
+                text: `✓ Check-in successful! ${geofenceStatus.message}. Pending supervisor approval.` 
+            });
+            // Reset form after successful check-in
+            camera.resetPhoto();
+            setSelectedGuardId('');
+            setSelectedLocationId('');
             fetchData(); // Refresh attendance list
         }
     };
@@ -88,12 +123,31 @@ export const AttendanceView: React.FC = () => {
         }
     };
 
+    // Real-time geofence status for selected location
+    const currentGeofenceStatus = selectedLocationId && geoData ? (() => {
+        const location = locations.find(l => l.id === Number(selectedLocationId));
+        if (!location) return null;
+        
+        return getGeofenceStatus(
+            geoData.coords.latitude,
+            geoData.coords.longitude,
+            location.latitude,
+            location.longitude,
+            location.geofence_radius_meters
+        );
+    })() : null;
+
     return (
         <div className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1">
                     <div className="w-full bg-surface p-8 rounded-xl shadow-lg space-y-6">
-                        <h1 className="text-3xl font-bold text-center text-text-primary">Guard Check-in</h1>
+                        <div className="text-center">
+                            <Shield size={32} className="mx-auto text-primary mb-2" />
+                            <h1 className="text-3xl font-bold text-text-primary">Guard Check-in</h1>
+                            <p className="text-sm text-gray-500 mt-1">GPS + Photo Verification Required</p>
+                        </div>
+                        
                         <div className="space-y-4">
                             <div>
                                 <label htmlFor="guard" className="flex items-center text-sm font-medium text-gray-700 mb-1"><User size={16} className="mr-2"/>Select Guard</label>
@@ -111,12 +165,44 @@ export const AttendanceView: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
-                            <h3 className="font-semibold mb-2">GPS Status</h3>
+                        {/* GPS Status */}
+                        <div className="text-sm text-gray-600 bg-gray-50 p-4 rounded-md space-y-2">
+                            <h3 className="font-semibold flex items-center">
+                                <MapPin size={16} className="mr-2" />
+                                GPS & Location Status
+                            </h3>
                             {geoLoading && <div className="flex items-center text-yellow-600"><Loader size={16} className="animate-spin mr-2"/> Acquiring signal...</div>}
                             {geoError && <div className="flex items-center text-red-600"><AlertTriangle size={16} className="mr-2"/> {geoError.message}</div>}
                             {geoData && <div className="flex items-center text-green-600"><CheckCircle size={16} className="mr-2"/> GPS lock acquired.</div>}
+                            
+                            {/* Real-time geofence status */}
+                            {currentGeofenceStatus && (
+                                <div className={`flex items-center ${currentGeofenceStatus.isWithin ? 'text-green-600' : 'text-red-600'}`}>
+                                    {currentGeofenceStatus.isWithin ? <CheckCircle size={16} className="mr-2"/> : <AlertTriangle size={16} className="mr-2"/>}
+                                    {currentGeofenceStatus.message}
+                                </div>
+                            )}
+                            
                             <button onClick={refreshGeo} className="text-xs text-blue-600 hover:underline mt-2 flex items-center"><RefreshCw size={12} className="mr-1"/> Refresh GPS</button>
+                        </div>
+
+                        {/* Photo Verification */}
+                        <div className="bg-blue-50 p-4 rounded-md">
+                            <h3 className="font-semibold text-sm text-gray-700 mb-3 flex items-center">
+                                <Camera size={16} className="mr-2" />
+                                Identity Verification
+                            </h3>
+                            <CameraCapture
+                                isOpen={camera.isOpen}
+                                isCapturing={camera.isCapturing}
+                                error={camera.error}
+                                photoDataUrl={camera.photoDataUrl}
+                                videoRef={camera.videoRef}
+                                onOpenCamera={camera.openCamera}
+                                onCapturePhoto={camera.capturePhoto}
+                                onCloseCamera={camera.closeCamera}
+                                onResetPhoto={camera.resetPhoto}
+                            />
                         </div>
                         
                         {statusMessage && (
@@ -129,9 +215,19 @@ export const AttendanceView: React.FC = () => {
                             </div>
                         )}
                         
-                        <Button onClick={handleCheckIn} disabled={geoLoading || !selectedGuardId || !selectedLocationId} className="w-full">
+                        <Button 
+                            onClick={handleCheckIn} 
+                            disabled={
+                                geoLoading || 
+                                !selectedGuardId || 
+                                !selectedLocationId || 
+                                !camera.photoDataUrl ||
+                                (currentGeofenceStatus && !currentGeofenceStatus.isWithin)
+                            } 
+                            className="w-full"
+                        >
                             {geoLoading ? <Loader size={18} className="animate-spin mr-2" /> : <CheckCircle size={18} className="mr-2" />}
-                            Check In
+                            {currentGeofenceStatus && !currentGeofenceStatus.isWithin ? 'Move Closer to Check In' : 'Complete Check In'}
                         </Button>
                     </div>
                 </div>
