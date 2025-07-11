@@ -42,7 +42,7 @@ app.get("/health", async (req, res) => {
     // Test Supabase connection
     const { data, error } = await supabaseClient
       .from("guards")
-      .select("count")
+      .select("*")
       .limit(1);
 
     if (error) throw error;
