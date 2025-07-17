@@ -35,17 +35,21 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [guard, setGuard] = useState<Guard | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
 
     useEffect(() => {
         // Get initial session
         const getSession = async () => {
+            setInitialLoading(true);
             const { data: { session } } = await supabase.auth.getSession();
             setUser(session?.user ?? null);
+            setInitialLoading(false);
+            
+            // Fetch guard data in background after setting user
             if (session?.user) {
-                await fetchGuardData(session.user.id);
+                fetchGuardData(session.user.id);
             }
-            setLoading(false);
         };
 
         getSession();
@@ -55,11 +59,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             async (event, session) => {
                 setUser(session?.user ?? null);
                 if (session?.user) {
-                    await fetchGuardData(session.user.id);
+                    // Fetch guard data in background
+                    fetchGuardData(session.user.id);
                 } else {
                     setGuard(null);
                 }
-                setLoading(false);
             }
         );
 
@@ -68,14 +72,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const fetchGuardData = async (userId: string) => {
         try {
-            // Add loading state to prevent multiple calls
+            // Prevent multiple calls for same user
             if (guard && guard.user_id === userId) return;
             
+            setLoading(true);
             const { data, error } = await supabase
                 .from('guards')
-                .select('*')
+                .select('id, name, role, user_id, is_active, base_salary, category')
                 .eq('user_id', userId)
-                .maybeSingle(); // Use maybeSingle for better performance
+                .maybeSingle();
 
             if (error) {
                 console.error('Error fetching guard data:', error);
@@ -87,14 +92,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
         } catch (error) {
             console.error('Error fetching guard data:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
     const signIn = async (email: string, password: string) => {
+        setLoading(true);
         const { error } = await supabase.auth.signInWithPassword({
             email,
             password,
         });
+        if (error) {
+            setLoading(false);
+        }
         return { error };
     };
 
@@ -154,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const value = {
         user,
         guard,
-        loading,
+        loading: initialLoading || loading,
         signIn,
         signUp,
         signOut,
