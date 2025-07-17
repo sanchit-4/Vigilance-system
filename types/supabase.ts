@@ -26,6 +26,8 @@ export type Database = {
           contact_info: string | null
           base_salary: number
           is_active: boolean
+          user_id: string | null
+          role: "admin" | "supervisor" | "guard"
         }
         Insert: Omit<Database['public']['Tables']['guards']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['guards']['Insert']>

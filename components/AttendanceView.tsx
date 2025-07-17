@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { Database } from '../types/supabase';
 import { useGeolocation } from '../hooks/useGeolocation';
@@ -18,6 +19,7 @@ type AttendanceWithDetails = Database['public']['Tables']['attendance']['Row'] &
 };
 
 export const AttendanceView: React.FC = () => {
+    const { guard: currentGuard, isSupervisor } = useAuth();
     const [guards, setGuards] = useState<Guard[]>([]);
     const [locations, setLocations] = useState<Location[]>([]);
     const [allAttendance, setAllAttendance] = useState<AttendanceWithDetails[]>([]);
@@ -40,6 +42,10 @@ export const AttendanceView: React.FC = () => {
         if(locationsRes.data) setLocations(locationsRes.data);
         if(attendanceRes.data) setAllAttendance(attendanceRes.data as AttendanceWithDetails[]);
 
+        // Auto-select current guard if not supervisor
+        if (!isSupervisor() && currentGuard && guardsRes.data) {
+            setSelectedGuardId(currentGuard.id.toString());
+        }
         setLoadingData(false);
     }, []);
 
@@ -104,7 +110,9 @@ export const AttendanceView: React.FC = () => {
             });
             // Reset form after successful check-in
             camera.resetPhoto();
-            setSelectedGuardId('');
+            if (isSupervisor()) {
+                setSelectedGuardId('');
+            }
             setSelectedLocationId('');
             fetchData(); // Refresh attendance list
         }
@@ -149,13 +157,22 @@ export const AttendanceView: React.FC = () => {
                         </div>
                         
                         <div className="space-y-4">
-                            <div>
-                                <label htmlFor="guard" className="flex items-center text-sm font-medium text-gray-700 mb-1"><User size={16} className="mr-2"/>Select Guard</label>
-                                <Select id="guard" value={selectedGuardId} onChange={e => {setSelectedGuardId(e.target.value); setStatusMessage(null)}}>
-                                    <option value="">-- Select your name --</option>
-                                    {guards.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                                </Select>
-                            </div>
+                            {isSupervisor() ? (
+                                <div>
+                                    <label htmlFor="guard" className="flex items-center text-sm font-medium text-gray-700 mb-1"><User size={16} className="mr-2"/>Select Guard</label>
+                                    <Select id="guard" value={selectedGuardId} onChange={e => {setSelectedGuardId(e.target.value); setStatusMessage(null)}}>
+                                        <option value="">-- Select a guard --</option>
+                                        {guards.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                                    </Select>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="flex items-center text-sm font-medium text-gray-700 mb-1"><User size={16} className="mr-2"/>Guard</label>
+                                    <div className="bg-gray-50 border border-gray-300 rounded-md px-3 py-2">
+                                        <span className="text-sm text-gray-700">{currentGuard?.name}</span>
+                                    </div>
+                                </div>
+                            )}
                             <div>
                                 <label htmlFor="location" className="flex items-center text-sm font-medium text-gray-700 mb-1"><MapPin size={16} className="mr-2"/>Select Location</label>
                                 <Select id="location" value={selectedLocationId} onChange={e => {setSelectedLocationId(e.target.value); setStatusMessage(null)}} disabled={!selectedGuardId}>
@@ -242,14 +259,14 @@ export const AttendanceView: React.FC = () => {
                                     <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Location</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Time</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Status</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Actions</th>
+                                    {isSupervisor() && <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {loadingData ? (
-                                    <tr><td colSpan={5} className="text-center py-10"><Spinner/></td></tr>
+                                    <tr><td colSpan={isSupervisor() ? 5 : 4} className="text-center py-10"><Spinner/></td></tr>
                                 ) : allAttendance.length === 0 ? (
-                                    <tr><td colSpan={5} className="text-center py-10 text-gray-500">No attendance records found.</td></tr>
+                                    <tr><td colSpan={isSupervisor() ? 5 : 4} className="text-center py-10 text-gray-500">No attendance records found.</td></tr>
                                 ) : allAttendance.map(rec => (
                                     <tr key={rec.id}>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm">{rec.guards?.name}</td>
@@ -263,14 +280,16 @@ export const AttendanceView: React.FC = () => {
                                                 {rec.status}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-4 whitespace-nowrap text-sm">
-                                            {rec.status === 'Pending Approval' && (
-                                                <div className="flex space-x-2">
-                                                    <Button size="sm" onClick={() => handleApproval(rec.id, 'Approved')}>Approve</Button>
-                                                    <Button size="sm" variant="danger" onClick={() => handleApproval(rec.id, 'Rejected')}>Reject</Button>
-                                                </div>
-                                            )}
-                                        </td>
+                                        {isSupervisor() && (
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm">
+                                                {rec.status === 'Pending Approval' && (
+                                                    <div className="flex space-x-2">
+                                                        <Button size="sm" onClick={() => handleApproval(rec.id, 'Approved')}>Approve</Button>
+                                                        <Button size="sm" variant="danger" onClick={() => handleApproval(rec.id, 'Rejected')}>Reject</Button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { Database } from '../types/supabase';
 import { User, MapPin, CheckCircle, AlertTriangle, Briefcase, Clock } from 'lucide-react';
@@ -22,6 +23,7 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.Re
 );
 
 export const Dashboard: React.FC = () => {
+    const { guard, isSupervisor } = useAuth();
     const [stats, setStats] = useState({ clients: 0, guards: 0, locations: 0, pendingAttendance: 0 });
     const [recentActivity, setRecentActivity] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(true);
@@ -30,20 +32,38 @@ export const Dashboard: React.FC = () => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const { data: clients, error: clientsError } = await supabase.from('clients').select('id', { count: 'exact', head: true });
-                const { data: guards, error: guardsError } = await supabase.from('guards').select('id', { count: 'exact', head: true }).eq('is_active', true);
-                const { data: locations, error: locationsError } = await supabase.from('locations').select('id', { count: 'exact', head: true });
-                const { data: pending, error: pendingError } = await supabase.from('attendance').select('id', { count: 'exact', head: true }).eq('status', 'Pending Approval');
-                const { data: activity, error: activityError } = await supabase
-                    .from('attendance')
-                    .select('*, guards(name), locations(site_name)')
-                    .order('check_in_time', { ascending: false })
-                    .limit(5);
+                let clients = { count: 0 };
+                let guards = { count: 0 };
+                let locations = { count: 0 };
+                let pending = { count: 0 };
+                let activity: AttendanceRecord[] = [];
 
-                if (clientsError || guardsError || locationsError || activityError || pendingError) {
-                    console.error('Error fetching dashboard data:', clientsError || guardsError || locationsError || activityError || pendingError);
-                    throw new Error('Failed to fetch dashboard data');
+                if (isSupervisor()) {
+                    const [clientsRes, guardsRes, locationsRes, pendingRes, activityRes] = await Promise.all([
+                        supabase.from('clients').select('id', { count: 'exact', head: true }),
+                        supabase.from('guards').select('id', { count: 'exact', head: true }).eq('is_active', true),
+                        supabase.from('locations').select('id', { count: 'exact', head: true }),
+                        supabase.from('attendance').select('id', { count: 'exact', head: true }).eq('status', 'Pending Approval'),
+                        supabase.from('attendance').select('*, guards(name), locations(site_name)').order('check_in_time', { ascending: false }).limit(5)
+                    ]);
+                    
+                    clients = clientsRes.data as any;
+                    guards = guardsRes.data as any;
+                    locations = locationsRes.data as any;
+                    pending = pendingRes.data as any;
+                    activity = activityRes.data as AttendanceRecord[];
+                } else {
+                    // For guards, only show their own recent activity
+                    const { data: activityRes } = await supabase
+                        .from('attendance')
+                        .select('*, guards(name), locations(site_name)')
+                        .eq('guard_id', guard?.id)
+                        .order('check_in_time', { ascending: false })
+                        .limit(5);
+                    
+                    activity = activityRes as AttendanceRecord[];
                 }
+
 
                 setStats({
                     clients: clients.count || 0,
@@ -51,7 +71,7 @@ export const Dashboard: React.FC = () => {
                     locations: locations.count || 0,
                     pendingAttendance: pending.count || 0,
                 });
-                setRecentActivity(activity as AttendanceRecord[]);
+                setRecentActivity(activity);
             } catch (error) {
                 console.error(error);
             } finally {
@@ -60,7 +80,7 @@ export const Dashboard: React.FC = () => {
         };
 
         fetchData();
-    }, []);
+    }, [guard, isSupervisor]);
 
     const getStatusChip = (status: "Pending Approval" | "Approved" | "Rejected") => {
         switch (status) {
@@ -74,17 +94,26 @@ export const Dashboard: React.FC = () => {
 
     return (
         <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-text-primary">Dashboard</h1>
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold text-text-primary">Dashboard</h1>
+                <div className="text-sm text-gray-500">
+                    Welcome, {guard?.name}!
+                </div>
+            </div>
             
+            {isSupervisor() && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard title="Total Clients" value={stats.clients} icon={<Briefcase size={24} className="text-white"/>} color="bg-blue-500" loading={loading} />
                 <StatCard title="Active Guards" value={stats.guards} icon={<User size={24} className="text-white"/>} color="bg-green-500" loading={loading} />
                 <StatCard title="Managed Locations" value={stats.locations} icon={<MapPin size={24} className="text-white"/>} color="bg-indigo-500" loading={loading} />
                 <StatCard title="Pending Approvals" value={stats.pendingAttendance} icon={<Clock size={24} className="text-white"/>} color="bg-yellow-500" loading={loading} />
             </div>
+            )}
 
             <div className="bg-surface p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold text-text-primary mb-4">Recent Activity</h2>
+                <h2 className="text-xl font-semibold text-text-primary mb-4">
+                    {isSupervisor() ? 'Recent Activity' : 'My Recent Activity'}
+                </h2>
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
