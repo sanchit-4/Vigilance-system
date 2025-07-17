@@ -52,17 +52,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setView }) => {
             </div>
             <nav className="flex-1 p-4">
                 <ul>
-                    {navItems.map((item) => (
+                    {navItems.map((item) => {
                         const disabled = item.requiredRoles && !hasRole(item.requiredRoles);
-                        <NavItem
-                            key={item.id}
-                            icon={item.icon}
-                            text={item.text}
-                            isActive={currentView === item.id}
+                        return (
+                            <NavItem
+                                key={item.id}
+                                icon={item.icon}
+                                text={item.text}
+                                isActive={currentView === item.id}
                                 disabled={disabled}
-                            onClick={() => setView(item.id)}
-                        />
-                    ))}
+                                onClick={() => setView(item.id)}
+                            />
+                        );
+                    })}
                 </ul>
             </nav>
             <div className="p-4 border-t border-sidebar-hover text-center text-xs text-gray-500">

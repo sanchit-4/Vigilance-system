@@ -27,7 +27,8 @@ export const AttendanceView: React.FC = () => {
     const [selectedGuardId, setSelectedGuardId] = useState('');
     const [selectedLocationId, setSelectedLocationId] = useState('');
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
-    const { data: geoData, loading: geoLoading, error: geoError, refresh: refreshGeo } = useGeolocation();
+    const geolocation = useGeolocation();
+    const { data: geoData, loading: geoLoading, error: geoError, refresh: refreshGeo } = geolocation;
     const camera = useCamera();
     
     const fetchData = useCallback(async () => {
@@ -43,11 +44,11 @@ export const AttendanceView: React.FC = () => {
         if(attendanceRes.data) setAllAttendance(attendanceRes.data as AttendanceWithDetails[]);
 
         // Auto-select current guard if not supervisor
-        if (!isSupervisor() && currentGuard && guardsRes.data) {
+        if (!isSupervisor && currentGuard && guardsRes.data) {
             setSelectedGuardId(currentGuard.id.toString());
         }
         setLoadingData(false);
-    }, []);
+    }, [currentGuard, isSupervisor]);
 
     useEffect(() => {
         fetchData();

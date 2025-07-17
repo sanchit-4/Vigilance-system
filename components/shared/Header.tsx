@@ -16,7 +16,7 @@ export const Header: React.FC = () => {
             supervisor: 'bg-blue-100 text-blue-800',
             guard: 'bg-green-100 text-green-800'
         };
-        return colors[role as keyof typeof colors] || colors.guard;
+        return colors[role as keyof typeof colors] || 'bg-gray-100 text-gray-800';
     };
 
     return (
