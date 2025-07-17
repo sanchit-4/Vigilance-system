@@ -35,21 +35,20 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [guard, setGuard] = useState<Guard | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [initialLoading, setInitialLoading] = useState(true);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         // Get initial session
         const getSession = async () => {
-            setInitialLoading(true);
+            setLoading(true);
             const { data: { session } } = await supabase.auth.getSession();
             setUser(session?.user ?? null);
-            setInitialLoading(false);
             
             // Fetch guard data in background after setting user
             if (session?.user) {
-                fetchGuardData(session.user.id);
+                await fetchGuardData(session.user.id);
             }
+            setLoading(false);
         };
 
         getSession();
@@ -59,11 +58,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             async (event, session) => {
                 setUser(session?.user ?? null);
                 if (session?.user) {
-                    // Fetch guard data in background
-                    fetchGuardData(session.user.id);
+                    await fetchGuardData(session.user.id);
                 } else {
                     setGuard(null);
                 }
+                setLoading(false);
             }
         );
 
@@ -72,10 +71,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const fetchGuardData = async (userId: string) => {
         try {
-            // Prevent multiple calls for same user
-            if (guard && guard.user_id === userId) return;
-            
-            setLoading(true);
             const { data, error } = await supabase
                 .from('guards')
                 .select('id, name, role, user_id, is_active, base_salary, category')
@@ -92,20 +87,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
         } catch (error) {
             console.error('Error fetching guard data:', error);
-        } finally {
-            setLoading(false);
         }
     };
 
     const signIn = async (email: string, password: string) => {
-        setLoading(true);
         const { error } = await supabase.auth.signInWithPassword({
             email,
             password,
         });
-        if (error) {
-            setLoading(false);
-        }
         return { error };
     };
 
@@ -165,7 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const value = {
         user,
         guard,
-        loading: initialLoading || loading,
+        loading,
         signIn,
         signUp,
         signOut,
