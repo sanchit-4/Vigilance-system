@@ -27,10 +27,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
         
         if (error) {
             setError(error.message);
-            setIsLoading(false);
-            setIsLoading(false);
         }
-        // Loading state will be handled by AuthContext
+        
+        setIsLoading(false);
     };
 
     return (
