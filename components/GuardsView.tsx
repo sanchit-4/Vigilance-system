@@ -115,7 +115,8 @@ export const GuardsView: React.FC = () => {
 
     const fetchGuards = useCallback(async () => {
         setLoading(true);
-        const { data, error } = await supabase.from('guards').select('*').order('name');
+        // Select only needed fields for performance
+        const { data, error } = await supabase.from('guards').select('id, name, category, contact_info, base_salary, is_active, created_at').order('name');
         if (error) {
             console.error('Error fetching guards:', error);
         } else {

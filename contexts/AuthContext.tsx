@@ -68,18 +68,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const fetchGuardData = async (userId: string) => {
         try {
+            // Add loading state to prevent multiple calls
+            if (guard && guard.user_id === userId) return;
+            
             const { data, error } = await supabase
                 .from('guards')
                 .select('*')
                 .eq('user_id', userId)
-                .single();
+                .maybeSingle(); // Use maybeSingle for better performance
 
             if (error) {
                 console.error('Error fetching guard data:', error);
                 return;
             }
 
-            setGuard(data);
+            if (data) {
+                setGuard(data);
+            }
         } catch (error) {
             console.error('Error fetching guard data:', error);
         }

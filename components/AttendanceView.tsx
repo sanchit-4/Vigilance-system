@@ -33,9 +33,10 @@ export const AttendanceView: React.FC = () => {
     
     const fetchData = useCallback(async () => {
         setLoadingData(true);
-        const guardsPromise = supabase.from('guards').select('*').eq('is_active', true).order('name');
-        const locationsPromise = supabase.from('locations').select('*').order('site_name');
-        const attendancePromise = supabase.from('attendance').select('*, guards(name), locations(site_name)').order('check_in_time', { ascending: false }).limit(100);
+        // Optimize queries - select only needed fields
+        const guardsPromise = supabase.from('guards').select('id, name').eq('is_active', true).order('name');
+        const locationsPromise = supabase.from('locations').select('id, site_name, latitude, longitude, geofence_radius_meters').order('site_name');
+        const attendancePromise = supabase.from('attendance').select('id, guard_id, location_id, check_in_time, status, is_within_geofence, guards!inner(name), locations!inner(site_name)').order('check_in_time', { ascending: false }).limit(50);
 
         const [guardsRes, locationsRes, attendanceRes] = await Promise.all([guardsPromise, locationsPromise, attendancePromise]);
 

@@ -29,7 +29,8 @@ const AttendanceReport: React.FC = () => {
 
     const fetchReportData = useCallback(async () => {
         setLoading(true);
-        let query = supabase.from('attendance').select('*, guards(name), locations(site_name)').order('check_in_time', { ascending: false });
+        // Optimize query - select only needed fields and limit results
+        let query = supabase.from('attendance').select('id, guard_id, location_id, check_in_time, status, is_within_geofence, guards!inner(name), locations!inner(site_name)').order('check_in_time', { ascending: false }).limit(100);
         if (filters.guardId) query = query.eq('guard_id', filters.guardId);
         if (filters.startDate) query = query.gte('check_in_time', filters.startDate);
         if (filters.endDate) {

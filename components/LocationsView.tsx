@@ -93,8 +93,9 @@ export const LocationsView: React.FC = () => {
 
     const fetchData = useCallback(async () => {
         setLoading(true);
-        const locationsPromise = supabase.from('locations').select('*, clients(name)').order('site_name');
-        const clientsPromise = supabase.from('clients').select('*').order('name');
+        // Optimize queries - select only needed fields
+        const locationsPromise = supabase.from('locations').select('id, site_name, client_id, latitude, longitude, geofence_radius_meters, created_at, clients!inner(name)').order('site_name');
+        const clientsPromise = supabase.from('clients').select('id, name').order('name');
         
         const [locationsRes, clientsRes] = await Promise.all([locationsPromise, clientsPromise]);
 

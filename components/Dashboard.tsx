@@ -32,46 +32,35 @@ export const Dashboard: React.FC = () => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                let clients = { count: 0 };
-                let guards = { count: 0 };
-                let locations = { count: 0 };
-                let pending = { count: 0 };
-                let activity: AttendanceRecord[] = [];
-
                 if (isSupervisor()) {
+                    // Optimize queries - use estimated counts for better performance
                     const [clientsRes, guardsRes, locationsRes, pendingRes, activityRes] = await Promise.all([
-                        supabase.from('clients').select('id', { count: 'exact', head: true }),
-                        supabase.from('guards').select('id', { count: 'exact', head: true }).eq('is_active', true),
-                        supabase.from('locations').select('id', { count: 'exact', head: true }),
-                        supabase.from('attendance').select('id', { count: 'exact', head: true }).eq('status', 'Pending Approval'),
-                        supabase.from('attendance').select('*, guards(name), locations(site_name)').order('check_in_time', { ascending: false }).limit(5)
+                        supabase.from('clients').select('id', { count: 'estimated', head: true }),
+                        supabase.from('guards').select('id', { count: 'estimated', head: true }).eq('is_active', true),
+                        supabase.from('locations').select('id', { count: 'estimated', head: true }),
+                        supabase.from('attendance').select('id', { count: 'estimated', head: true }).eq('status', 'Pending Approval'),
+                        supabase.from('attendance').select('id, check_in_time, status, is_within_geofence, guards!inner(name), locations!inner(site_name)').order('check_in_time', { ascending: false }).limit(5)
                     ]);
                     
-                    clients = clientsRes.data as any;
-                    guards = guardsRes.data as any;
-                    locations = locationsRes.data as any;
-                    pending = pendingRes.data as any;
-                    activity = activityRes.data as AttendanceRecord[];
+                    setStats({
+                        clients: clientsRes.count || 0,
+                        guards: guardsRes.count || 0,
+                        locations: locationsRes.count || 0,
+                        pendingAttendance: pendingRes.count || 0,
+                    });
+                    setRecentActivity((activityRes.data as AttendanceRecord[]) || []);
                 } else {
                     // For guards, only show their own recent activity
                     const { data: activityRes } = await supabase
                         .from('attendance')
-                        .select('*, guards(name), locations(site_name)')
+                        .select('id, check_in_time, status, is_within_geofence, guards!inner(name), locations!inner(site_name)')
                         .eq('guard_id', guard?.id)
                         .order('check_in_time', { ascending: false })
                         .limit(5);
                     
-                    activity = activityRes as AttendanceRecord[];
+                    setStats({ clients: 0, guards: 0, locations: 0, pendingAttendance: 0 });
+                    setRecentActivity((activityRes as AttendanceRecord[]) || []);
                 }
-
-
-                setStats({
-                    clients: clients.count || 0,
-                    guards: guards.count || 0,
-                    locations: locations.count || 0,
-                    pendingAttendance: pending.count || 0,
-                });
-                setRecentActivity(activity);
             } catch (error) {
                 console.error(error);
             } finally {
@@ -79,7 +68,12 @@ export const Dashboard: React.FC = () => {
             }
         };
 
-        fetchData();
+        // Add debounce to prevent multiple calls
+        const timeoutId = setTimeout(() => {
+            fetchData();
+        }, 100);
+
+        return () => clearTimeout(timeoutId);
     }, [guard, isSupervisor]);
 
     const getStatusChip = (status: "Pending Approval" | "Approved" | "Rejected") => {
