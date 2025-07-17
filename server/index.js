@@ -18,7 +18,7 @@ app.use(
   cors({
     origin:
       process.env.NODE_ENV === "production"
-        ? ["https://leafy-duckanoo-19f456.netlify.app"]
+        ? ["https://vigilance-system.vercel.app/"]
         : ["http://localhost:5173", "http://localhost:3000"],
     credentials: true,
   })
