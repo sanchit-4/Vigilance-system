@@ -111,7 +111,7 @@ export const AttendanceView: React.FC = () => {
             });
             // Reset form after successful check-in
             camera.resetPhoto();
-            if (isSupervisor()) {
+            if (isSupervisor) {
                 setSelectedGuardId('');
             }
             setSelectedLocationId('');
@@ -158,7 +158,7 @@ export const AttendanceView: React.FC = () => {
                         </div>
                         
                         <div className="space-y-4">
-                            {isSupervisor() ? (
+                            {isSupervisor ? (
                                 <div>
                                     <label htmlFor="guard" className="flex items-center text-sm font-medium text-gray-700 mb-1"><User size={16} className="mr-2"/>Select Guard</label>
                                     <Select id="guard" value={selectedGuardId} onChange={e => {setSelectedGuardId(e.target.value); setStatusMessage(null)}}>
@@ -260,14 +260,14 @@ export const AttendanceView: React.FC = () => {
                                     <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Location</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Time</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Status</th>
-                                    {isSupervisor() && <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Actions</th>}
+                                    {isSupervisor && <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {loadingData ? (
-                                    <tr><td colSpan={isSupervisor() ? 5 : 4} className="text-center py-10"><Spinner/></td></tr>
+                                    <tr><td colSpan={isSupervisor ? 5 : 4} className="text-center py-10"><Spinner/></td></tr>
                                 ) : allAttendance.length === 0 ? (
-                                    <tr><td colSpan={isSupervisor() ? 5 : 4} className="text-center py-10 text-gray-500">No attendance records found.</td></tr>
+                                    <tr><td colSpan={isSupervisor ? 5 : 4} className="text-center py-10 text-gray-500">No attendance records found.</td></tr>
                                 ) : allAttendance.map(rec => (
                                     <tr key={rec.id}>
                                         <td className="px-4 py-4 whitespace-nowrap text-sm">{rec.guards?.name}</td>
@@ -281,7 +281,7 @@ export const AttendanceView: React.FC = () => {
                                                 {rec.status}
                                             </span>
                                         </td>
-                                        {isSupervisor() && (
+                                        {isSupervisor && (
                                             <td className="px-4 py-4 whitespace-nowrap text-sm">
                                                 {rec.status === 'Pending Approval' && (
                                                     <div className="flex space-x-2">

@@ -101,7 +101,7 @@ export const Dashboard: React.FC = () => {
                 </div>
             </div>
             
-            {isSupervisor() && (
+            {isSupervisor && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard title="Total Clients" value={stats.clients} icon={<Briefcase size={24} className="text-white"/>} color="bg-blue-500" loading={loading} />
                 <StatCard title="Active Guards" value={stats.guards} icon={<User size={24} className="text-white"/>} color="bg-green-500" loading={loading} />
@@ -112,7 +112,7 @@ export const Dashboard: React.FC = () => {
 
             <div className="bg-surface p-6 rounded-lg shadow-md">
                 <h2 className="text-xl font-semibold text-text-primary mb-4">
-                    {isSupervisor() ? 'Recent Activity' : 'My Recent Activity'}
+                    {isSupervisor ? 'Recent Activity' : 'My Recent Activity'}
                 </h2>
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
