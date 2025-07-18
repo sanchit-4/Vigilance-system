@@ -15,7 +15,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-        console.error('User ID being searched:', userId);
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
@@ -32,7 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [error, setError] = useState<string | null>(null);
 
     // Enhanced timeout utility with retry logic
-    const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 15000): Promise<T> => {
+    const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 20000): Promise<T> => {
         return Promise.race([
             promise,
             new Promise<T>((_, reject) => 
@@ -45,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const withRetry = async <T,>(
         operation: () => Promise<T>,
         maxRetries: number = 3,
-        delay: number = 1000
+        delay: number = 2000
     ): Promise<T> => {
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
@@ -64,6 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchGuardData = async (userId: string): Promise<Guard | null> => {
         try {
             console.log('Fetching guard data for user:', userId);
+            console.log('Fetching guard data for user:', userId);
             
             const { data, error } = await withRetry(
                 () => withTimeout(
@@ -72,16 +72,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         .select('*')
                         .eq('user_id', userId)
                         .single(),
-                    10000
+                    15000
                 ),
-                2
+                3
             );
 
             if (error) {
                 console.error('Error fetching guard data:', error);
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+                console.error('Error details:', error.details);
+                console.error('User ID being searched:', userId);
+                
                 if (error.code === 'PGRST116') {
                     console.log('No guard record found for user');
-                    // Create a default guard record if none exists
+                    
+                    // Check if there's an admin record without user_id
+                    console.log('Looking for admin record without user_id...');
+                    const { data: adminRecord, error: adminError } = await withRetry(
+                        () => withTimeout(
+                            supabase
+                                .from('guards')
+                                .select('*')
+                                .eq('role', 'admin')
+                                .is('user_id', null)
+                                .single(),
+                            15000
+                        ),
+                        2
+                    );
+                    
+                    if (adminError) {
+                        console.error('No admin record found without user_id:', adminError);
+                        // Create a default guard record if none exists
+                        const { data: newGuard, error: createError } = await withRetry(
+                            () => withTimeout(
+                                supabase
+                                    .from('guards')
+                                    .insert([
+                                        {
+                                            user_id: userId,
+                                            name: 'New User',
+                                            role: 'guard',
+                                            base_salary: 3000,
+                                            category: 'Guard',
+                                            date_of_joining: new Date().toISOString().split('T')[0],
+                                            is_active: true,
+                                            police_verification_status: 'Pending'
+                                        }
+                                    ])
+                                    .select()
+                                    .single(),
+                                15000
+                            ),
+                            2
+                        );
+                        
+                        if (createError) {
+                            console.error('Error creating default guard record:', createError);
+                            return null;
+                        }
+                        
+                        console.log('Created default guard record:', newGuard);
+                        return newGuard;
+                    } else {
+                        console.log('Found admin record without user_id, linking it...');
+                        // Link the admin record to this user
+                        const { data: linkedAdmin, error: linkError } = await withRetry(
+                            () => withTimeout(
+                                supabase
+                                    .from('guards')
+                                    .update({ user_id: userId })
+                                    .eq('id', adminRecord.id)
+                                    .select()
+                                    .single(),
+                                15000
+                            ),
+                            2
+                        );
+                        
+                        if (linkError) {
+                            console.error('Error linking admin record:', linkError);
+                            return null;
+                        }
+                        
+                        console.log('Successfully linked admin record:', linkedAdmin);
+                        return linkedAdmin;
+                    }
                     try {
                         const { data: newGuard, error: createError } = await supabase
                             .from('guards')
@@ -147,7 +224,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const { data: { session }, error: sessionError } = await withRetry(
                 () => withTimeout(
                     supabase.auth.getSession(),
-                    15000
+                    20000
                 ),
                 3
             );
@@ -218,19 +295,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         return () => {
             subscription.unsubscribe();
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
-            console.error('Error details:', error.details);
-            
         };
     }, []);
-                // Check if there's an admin record without user_id
+
+    // Force loading to false after maximum time
     useEffect(() => {
+        const maxLoadingTime = setTimeout(() => {
+            if (loading) {
                 console.warn('Forcing loading to false after timeout');
                 setLoading(false);
                 setError('Authentication service is taking too long to respond');
             }
-        }, 15000);
+        }, 25000); // 25 seconds maximum loading time
 
         return () => clearTimeout(maxLoadingTime);
     }, [loading]);
@@ -241,9 +317,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const result = await withRetry(
                 () => withTimeout(
                     supabase.auth.signInWithPassword({ email, password }),
-                    15000
+                    20000
                 ),
-                2
+                3
             );
             return result;
         } catch (error) {
@@ -265,9 +341,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const { data, error } = await withRetry(
                 () => withTimeout(
                     supabase.auth.signUp({ email, password }),
-                    15000
+                    20000
                 ),
-                2
+                3
             );
 
             if (error) {
@@ -291,79 +367,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         category: guardData.category || 'Guard',
                         date_of_joining: guardData.date_of_joining || new Date().toISOString().split('T')[0],
                         is_active: guardData.is_active ?? true,
-                    console.log('Looking for admin record without user_id...');
-                    const { data: adminRecord, error: adminError } = await withRetry(
+                        police_verification_status: guardData.police_verification_status || 'Pending'
+                    };
+                    
+                    console.log('Creating guard record:', guardRecord);
+                    
+                    const { data: guardData, error: guardError } = await withRetry(
                         () => withTimeout(
                             supabase
                                 .from('guards')
-                                .select('*')
-                                .eq('role', 'admin')
-                                .is('user_id', null)
+                                .insert([guardRecord])
+                                .select()
                                 .single(),
-                            10000
+                            15000
                         ),
                         2
                     );
+                    
                     if (guardError) {
-                    if (adminError) {
-                        console.error('No admin record found without user_id:', adminError);
-                        // Create a default guard record if none exists
-                        const { data: newGuard, error: createError } = await withRetry(
-                            () => withTimeout(
-                                supabase
-                                    .from('guards')
-                                    .insert([
-                                        {
-                                            user_id: userId,
-                                            name: 'New User',
-                                            role: 'guard',
-                                            base_salary: 3000,
-                                            category: 'Guard',
-                                            date_of_joining: new Date().toISOString().split('T')[0],
-                                            is_active: true,
-                                            police_verification_status: 'Pending'
-                                        }
-                                    ])
-                                    .select()
-                                    .single(),
-                                10000
-                            ),
-                            2
-                        );
-                        
-                        if (createError) {
-                            console.error('Error creating default guard record:', createError);
-                            return null;
-                        }
-                        
-                        console.log('Created default guard record:', newGuard);
-                        return newGuard;
-                    } else {
-                        console.log('Found admin record without user_id, linking it...');
-                        // Link the admin record to this user
-                        const { data: linkedAdmin, error: linkError } = await withRetry(
-                            () => withTimeout(
-                                supabase
-                                    .from('guards')
-                                    .update({ user_id: userId })
-                                    .eq('id', adminRecord.id)
-                                    .select()
-                                    .single(),
-                                10000
-                            ),
-                            2
-                        );
-                        
-                        if (linkError) {
-                            console.error('Error linking admin record:', linkError);
-                            return null;
-                        }
-                        
-                        console.log('Successfully linked admin record:', linkedAdmin);
-                        return linkedAdmin;
+                        console.error('Failed to create guard record:', guardError);
+                        return { data, error: guardError };
                     }
+                    
+                    console.log('Guard record created successfully:', guardData);
+                } catch (insertError) {
                     console.error('Failed to create guard record:', insertError);
-                    console.error('Failed to handle missing guard record:', createError);
                     return { data, error: insertError };
                 }
             }
@@ -382,17 +410,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('Signing out user...');
             const { error } = await withTimeout(
                 supabase.auth.signOut(),
-                10000
+                15000
             );
             if (error) throw error;
         } catch (error) {
-            console.error('Sign out
-} error:', error);
+            console.error('Sign out error:', error);
             if (error.message && error.message.includes('timed out')) {
                 setError('Connection timeout - please try again');
             } else {
                 setError('Failed to sign out');
-            }
 }d to sign out');
             throw error;
         }
@@ -415,8 +441,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-}
-}
-}
-}
