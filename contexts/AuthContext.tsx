@@ -15,6 +15,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+        console.error('User ID being searched:', userId);
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
@@ -183,12 +184,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         return () => {
             subscription.unsubscribe();
+            console.error('Error code:', error.code);
+            console.error('Error message:', error.message);
+            console.error('Error details:', error.details);
+            
         };
     }, []);
-
+                // Check if there's an admin record without user_id
     useEffect(() => {
-        const maxLoadingTime = setTimeout(() => {
-            if (loading) {
                 console.warn('Forcing loading to false after timeout');
                 setLoading(false);
                 setError('Authentication service is taking too long to respond');
@@ -244,30 +247,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         category: guardData.category || 'Guard',
                         date_of_joining: guardData.date_of_joining || new Date().toISOString().split('T')[0],
                         is_active: guardData.is_active ?? true,
-                        police_verification_status: guardData.police_verification_status || 'Pending'
-                    };
-                    
-                    console.log('Creating guard record:', guardRecord);
-                    
-                    const { data: guardData2, error: guardError } = await withTimeout(
-                        supabase
-                            .from('guards')
-                            .insert([guardRecord])
-                            .select()
-                            .single(),
-                        10000
-                    );
-
+                    console.log('Looking for admin record without user_id...');
+                    const { data: adminRecord, error: adminError } = await supabase
+                        .from('guards')
+                        .select('*')
+                        .eq('role', 'admin')
+                        .is('user_id', null)
+                        .single();
                     if (guardError) {
-                        console.error('Error creating guard record:', guardError);
-                        setError(`Failed to create user profile: ${guardError.message}`);
-                        return { data, error: guardError };
+                    if (adminError) {
+                        console.error('No admin record found without user_id:', adminError);
+                        // Create a default guard record if none exists
+                        const { data: newGuard, error: createError } = await supabase
+                            .from('guards')
+                            .insert([
+                                {
+                                    user_id: userId,
+                                    name: 'New User',
+                                    role: 'guard',
+                                    base_salary: 3000,
+                                    category: 'Guard',
+                                    date_of_joining: new Date().toISOString().split('T')[0],
+                                    is_active: true,
+                                    police_verification_status: 'Pending'
+                                }
+                            ])
+                            .select()
+                            .single();
+                        
+                        if (createError) {
+                            console.error('Error creating default guard record:', createError);
+                            return null;
+                        }
+                        
+                        console.log('Created default guard record:', newGuard);
+                        return newGuard;
+                    } else {
+                        console.log('Found admin record without user_id, linking it...');
+                        // Link the admin record to this user
+                        const { data: linkedAdmin, error: linkError } = await supabase
+                            .from('guards')
+                            .update({ user_id: userId })
+                            .eq('id', adminRecord.id)
+                            .select()
+                            .single();
+                        
+                        if (linkError) {
+                            console.error('Error linking admin record:', linkError);
+                            return null;
+                        }
+                        
+                        console.log('Successfully linked admin record:', linkedAdmin);
+                        return linkedAdmin;
                     }
-                    
-                    console.log('Guard record created successfully:', guardData2);
-                } catch (insertError) {
                     console.error('Failed to create guard record:', insertError);
-                    setError(`Failed to create user profile: ${insertError.message}`);
+                    console.error('Failed to handle missing guard record:', createError);
                     return { data, error: insertError };
                 }
             }
