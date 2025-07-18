@@ -22,6 +22,7 @@ export interface Guard {
     is_active: boolean;
     role: 'admin' | 'supervisor' | 'guard';
     user_id?: string;
+    created_at?: string;
 }
 
 export interface Client {

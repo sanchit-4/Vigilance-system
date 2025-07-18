@@ -9,7 +9,7 @@ import {
     BarChart3,
     Shield
 } from 'lucide-react';
-import { View } from '../types';
+import { View } from '../types/index';
 
 interface SidebarProps {
     currentView: View;
