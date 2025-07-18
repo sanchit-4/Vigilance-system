@@ -31,27 +31,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Timeout utility for async operations
-    const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+    // Enhanced timeout utility with retry logic
+    const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 15000): Promise<T> => {
         return Promise.race([
             promise,
             new Promise<T>((_, reject) => 
-                setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
+                setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
             )
         ]);
+    };
+
+    // Retry utility for failed operations
+    const withRetry = async <T,>(
+        operation: () => Promise<T>,
+        maxRetries: number = 3,
+        delay: number = 1000
+    ): Promise<T> => {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                return await operation();
+            } catch (error) {
+                console.log(`Attempt ${attempt} failed:`, error);
+                if (attempt === maxRetries) {
+                    throw error;
+                }
+                await new Promise(resolve => setTimeout(resolve, delay * attempt));
+            }
+        }
+        throw new Error('Max retries exceeded');
     };
 
     const fetchGuardData = async (userId: string): Promise<Guard | null> => {
         try {
             console.log('Fetching guard data for user:', userId);
             
-            const { data, error } = await withTimeout(
-                supabase
-                    .from('guards')
-                    .select('*')
-                    .eq('user_id', userId)
-                    .single(),
-                8000
+            const { data, error } = await withRetry(
+                () => withTimeout(
+                    supabase
+                        .from('guards')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .single(),
+                    10000
+                ),
+                2
             );
 
             if (error) {
@@ -104,8 +127,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
             console.error('Failed to fetch guard data:', error);
             // Only set error for actual failures, not missing records
-            if (error.message && !error.message.includes('No guard record')) {
-                setError(`Failed to load user profile: ${error.message}`);
+            if (error.message) {
+                if (error.message.includes('timed out')) {
+                    setError('Connection timeout - please check your internet connection and try again');
+                } else if (!error.message.includes('No guard record')) {
+                    setError(`Failed to load user profile: ${error.message}`);
+                }
             }
             return null;
         }
@@ -117,14 +144,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(true);
             setError(null);
 
-            const { data: { session }, error: sessionError } = await withTimeout(
-                supabase.auth.getSession(),
-                8000
+            const { data: { session }, error: sessionError } = await withRetry(
+                () => withTimeout(
+                    supabase.auth.getSession(),
+                    15000
+                ),
+                3
             );
 
             if (sessionError) {
                 console.error('Session error:', sessionError);
-                setError('Authentication service unavailable');
+                setError('Authentication service unavailable - please try again');
                 return;
             }
 
@@ -146,7 +176,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         } catch (error) {
             console.error('Auth initialization failed:', error);
-            setError('Failed to initialize authentication');
+            if (error.message && error.message.includes('timed out')) {
+                setError('Connection timeout - please check your internet connection and try again');
+            } else {
+                setError('Failed to initialize authentication - please try again');
+            }
         } finally {
             setLoading(false);
         }
@@ -204,14 +238,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const signIn = async (email: string, password: string) => {
         try {
             setError(null);
-            const result = await withTimeout(
-                supabase.auth.signInWithPassword({ email, password }),
-                10000
+            const result = await withRetry(
+                () => withTimeout(
+                    supabase.auth.signInWithPassword({ email, password }),
+                    15000
+                ),
+                2
             );
             return result;
         } catch (error) {
             console.error('Sign in error:', error);
-            setError('Failed to sign in');
+            if (error.message && error.message.includes('timed out')) {
+                setError('Connection timeout - please check your internet connection and try again');
+            } else {
+                setError('Failed to sign in - please try again');
+            }
             return { data: null, error };
         }
     };
@@ -221,9 +262,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setError(null);
             console.log('Starting sign up process for:', email);
             
-            const { data, error } = await withTimeout(
-                supabase.auth.signUp({ email, password }),
-                10000
+            const { data, error } = await withRetry(
+                () => withTimeout(
+                    supabase.auth.signUp({ email, password }),
+                    15000
+                ),
+                2
             );
 
             if (error) {
@@ -248,32 +292,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         date_of_joining: guardData.date_of_joining || new Date().toISOString().split('T')[0],
                         is_active: guardData.is_active ?? true,
                     console.log('Looking for admin record without user_id...');
-                    const { data: adminRecord, error: adminError } = await supabase
-                        .from('guards')
-                        .select('*')
-                        .eq('role', 'admin')
-                        .is('user_id', null)
-                        .single();
+                    const { data: adminRecord, error: adminError } = await withRetry(
+                        () => withTimeout(
+                            supabase
+                                .from('guards')
+                                .select('*')
+                                .eq('role', 'admin')
+                                .is('user_id', null)
+                                .single(),
+                            10000
+                        ),
+                        2
+                    );
                     if (guardError) {
                     if (adminError) {
                         console.error('No admin record found without user_id:', adminError);
                         // Create a default guard record if none exists
-                        const { data: newGuard, error: createError } = await supabase
-                            .from('guards')
-                            .insert([
-                                {
-                                    user_id: userId,
-                                    name: 'New User',
-                                    role: 'guard',
-                                    base_salary: 3000,
-                                    category: 'Guard',
-                                    date_of_joining: new Date().toISOString().split('T')[0],
-                                    is_active: true,
-                                    police_verification_status: 'Pending'
-                                }
-                            ])
-                            .select()
-                            .single();
+                        const { data: newGuard, error: createError } = await withRetry(
+                            () => withTimeout(
+                                supabase
+                                    .from('guards')
+                                    .insert([
+                                        {
+                                            user_id: userId,
+                                            name: 'New User',
+                                            role: 'guard',
+                                            base_salary: 3000,
+                                            category: 'Guard',
+                                            date_of_joining: new Date().toISOString().split('T')[0],
+                                            is_active: true,
+                                            police_verification_status: 'Pending'
+                                        }
+                                    ])
+                                    .select()
+                                    .single(),
+                                10000
+                            ),
+                            2
+                        );
                         
                         if (createError) {
                             console.error('Error creating default guard record:', createError);
@@ -285,12 +341,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     } else {
                         console.log('Found admin record without user_id, linking it...');
                         // Link the admin record to this user
-                        const { data: linkedAdmin, error: linkError } = await supabase
-                            .from('guards')
-                            .update({ user_id: userId })
-                            .eq('id', adminRecord.id)
-                            .select()
-                            .single();
+                        const { data: linkedAdmin, error: linkError } = await withRetry(
+                            () => withTimeout(
+                                supabase
+                                    .from('guards')
+                                    .update({ user_id: userId })
+                                    .eq('id', adminRecord.id)
+                                    .select()
+                                    .single(),
+                                10000
+                            ),
+                            2
+                        );
                         
                         if (linkError) {
                             console.error('Error linking admin record:', linkError);
@@ -320,12 +382,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('Signing out user...');
             const { error } = await withTimeout(
                 supabase.auth.signOut(),
-                5000
+                10000
             );
             if (error) throw error;
         } catch (error) {
             console.error('Sign out error:', error);
-            setError('Faile
+            if (error.message && error.message.includes('timed out')) {
+                setError('Connection timeout - please try again');
+            } else {
+                setError('Failed to sign out');
+            }
 }d to sign out');
             throw error;
         }
