@@ -50,15 +50,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     .select('*')
                     .eq('user_id', userId)
                     .single(),
-                5000
+                8000
             );
 
             if (error) {
                 console.error('Error fetching guard data:', error);
                 if (error.code === 'PGRST116') {
                     console.log('No guard record found for user');
+                    // Create a default guard record if none exists
+                    try {
+                        const { data: newGuard, error: createError } = await supabase
+                            .from('guards')
+                            .insert([
+                                {
+                                    user_id: userId,
+                                    name: 'New User',
+                                    role: 'guard',
+                                    base_salary: 3000,
+                                    category: 'Guard',
+                                    date_of_joining: new Date().toISOString().split('T')[0],
+                                    is_active: true,
+                                    police_verification_status: 'Pending'
+                                }
+                            ])
+                            .select()
+                            .single();
+                        
+                        if (createError) {
+                            console.error('Error creating default guard record:', createError);
+                            return null;
+                        }
+                        
+                        console.log('Created default guard record:', newGuard);
+                        return newGuard;
+                    } catch (createError) {
+                        console.error('Failed to create default guard record:', createError);
+                        return null;
+                    }
+                }
+                
+                // Don't throw error for permission issues, just return null
+                if (error.code === 'PGRST301' || error.code === 'PGRST204') {
+                    console.log('Permission denied or no data - user may not have guard record yet');
                     return null;
                 }
+                
                 throw error;
             }
 
@@ -66,7 +102,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return data;
         } catch (error) {
             console.error('Failed to fetch guard data:', error);
-            setError('Failed to load user profile');
+            // Only set error for actual failures, not missing records
+            if (error.message && !error.message.includes('No guard record')) {
+                setError(`Failed to load user profile: ${error.message}`);
+            }
             return null;
         }
     };
@@ -94,6 +133,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (session?.user) {
                 const guardData = await fetchGuardData(session.user.id);
                 setGuard(guardData);
+                
+                // If no guard data but user exists, allow them to continue
+                if (!guardData) {
+                    console.log('User authenticated but no guard record found');
+                    // Don't set error here, let user continue and create record later
+                }
             } else {
                 setGuard(null);
             }
@@ -119,6 +164,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     if (session?.user) {
                         const guardData = await fetchGuardData(session.user.id);
                         setGuard(guardData);
+                        
+                        // If no guard data but user exists, allow them to continue
+                        if (!guardData) {
+                            console.log('User authenticated but no guard record found in state change');
+                        }
                     } else {
                         setGuard(null);
                     }
@@ -166,31 +216,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const signUp = async (email: string, password: string, guardData: Partial<Guard>) => {
         try {
             setError(null);
+            console.log('Starting sign up process for:', email);
+            
             const { data, error } = await withTimeout(
                 supabase.auth.signUp({ email, password }),
                 10000
             );
 
-            if (data.user && !error) {
+            if (error) {
+                console.error('Supabase auth signup error:', error);
+                return { data, error };
+            }
+
+            if (data.user) {
+                console.log('User created successfully:', data.user.id);
+                
+                // Add a small delay to ensure user is fully created
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
                 try {
-                    const { error: guardError } = await withTimeout(
+                    const guardRecord = {
+                        ...guardData,
+                        user_id: data.user.id,
+                        name: guardData.name || 'New User',
+                        role: guardData.role || 'guard',
+                        base_salary: guardData.base_salary || 3000,
+                        category: guardData.category || 'Guard',
+                        date_of_joining: guardData.date_of_joining || new Date().toISOString().split('T')[0],
+                        is_active: guardData.is_active ?? true,
+                        police_verification_status: guardData.police_verification_status || 'Pending'
+                    };
+                    
+                    console.log('Creating guard record:', guardRecord);
+                    
+                    const { data: guardData2, error: guardError } = await withTimeout(
                         supabase
                             .from('guards')
-                            .insert([
-                                {
-                                    ...guardData,
-                                    user_id: data.user.id,
-                                },
-                            ]),
+                            .insert([guardRecord])
+                            .select()
+                            .single(),
                         10000
                     );
 
                     if (guardError) {
                         console.error('Error creating guard record:', guardError);
+                        setError(`Failed to create user profile: ${guardError.message}`);
                         return { data, error: guardError };
                     }
+                    
+                    console.log('Guard record created successfully:', guardData2);
                 } catch (insertError) {
                     console.error('Failed to create guard record:', insertError);
+                    setError(`Failed to create user profile: ${insertError.message}`);
                     return { data, error: insertError };
                 }
             }
@@ -206,6 +283,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const signOut = async () => {
         try {
             setError(null);
+            console.log('Signing out user...');
             const { error } = await withTimeout(
                 supabase.auth.signOut(),
                 5000
@@ -220,6 +298,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const clearError = () => {
         setError(null);
+        console.log('Error cleared');
     };
 
     const value = {
