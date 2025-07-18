@@ -1,16 +1,19 @@
 import React, { useState, useCallback } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { AuthPage } from './components/auth/AuthPage';
-import { ProtectedRoute } from './components/shared/ProtectedRoute';
-import { Header } from './components/shared/Header';
-import { Sidebar } from './components/Sidebar';
-import { Dashboard } from './components/Dashboard';
-import { GuardsView } from './components/GuardsView';
-import { LocationsView } from './components/LocationsView';
-import { AttendanceView } from './components/AttendanceView';
-import { FinancialsView } from './components/FinancialsView';
-import { ReportsView } from './components/ReportsView';
-import { ClientsView } from './components/ClientsView';
+import { AuthProvider, useAuth } from './contexts';
+import { 
+    AuthPage, 
+    ProtectedRoute, 
+    Header, 
+    Sidebar,
+    Dashboard,
+    GuardsView,
+    LocationsView,
+    AttendanceView,
+    FinancialsView,
+    ReportsView,
+    ClientsView,
+    ErrorBoundary
+} from './components';
 import { View } from './types';
 import { Menu, X } from 'lucide-react';
 
@@ -113,9 +116,11 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
     return (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
+        <ErrorBoundary>
+            <AuthProvider>
+                <AppContent />
+            </AuthProvider>
+        </ErrorBoundary>
     );
 };
 

@@ -2,10 +2,11 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { supabase } from '../lib/supabaseClient';
 import { User, AuthError } from '@supabase/supabase-js';
 import { Database } from '../types/supabase';
+import { getErrorMessage } from '../lib/utils';
 
 type Guard = Database['public']['Tables']['guards']['Row'];
 
-interface AuthContextType {
+export interface AuthContextType {
     user: User | null;
     guard: Guard | null;
     loading: boolean;
@@ -127,7 +128,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setGuard(data);
         } catch (error) {
             console.error('Error fetching guard data:', error);
-        }
+            setGuard(null);
     };
 
     const signIn = async (email: string, password: string) => {
