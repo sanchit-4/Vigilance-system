@@ -419,7 +419,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setError('Connection timeout - please try again');
             } else {
                 setError('Failed to sign out');
-}d to sign out');
+            }d to sign out');
             throw error;
         }
     };
@@ -441,3 +441,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
