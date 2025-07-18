@@ -50,12 +50,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     .select('*')
                     .eq('user_id', userId)
                     .single(),
-                5000 // 5 second timeout
+                5000
             );
 
             if (error) {
                 console.error('Error fetching guard data:', error);
-                // If no guard found, it's not necessarily an error for new users
                 if (error.code === 'PGRST116') {
                     console.log('No guard record found for user');
                     return null;
@@ -78,10 +77,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(true);
             setError(null);
 
-            // Get initial session with timeout
             const { data: { session }, error: sessionError } = await withTimeout(
                 supabase.auth.getSession(),
-                8000 // 8 second timeout
+                8000
             );
 
             if (sessionError) {
@@ -109,10 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     useEffect(() => {
-        // Initialize auth on component mount
         initializeAuth();
 
-        // Set up auth state change listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
                 console.log('Auth state changed:', event, session ? 'User present' : 'No user');
@@ -130,19 +126,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     console.error('Error in auth state change:', error);
                     setError('Authentication error occurred');
                 } finally {
-                    // Always ensure loading is false after auth state change
                     setLoading(false);
                 }
             }
         );
 
-        // Cleanup subscription on unmount
         return () => {
             subscription.unsubscribe();
         };
     }, []);
 
-    // Fallback: Force loading to false after maximum wait time
     useEffect(() => {
         const maxLoadingTime = setTimeout(() => {
             if (loading) {
@@ -150,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setLoading(false);
                 setError('Authentication service is taking too long to respond');
             }
-        }, 15000); // 15 second maximum loading time
+        }, 15000);
 
         return () => clearTimeout(maxLoadingTime);
     }, [loading]);
@@ -179,7 +172,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             );
 
             if (data.user && !error) {
-                // Create guard record
                 try {
                     const { error: guardError } = await withTimeout(
                         supabase
@@ -243,4 +235,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-}
