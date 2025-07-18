@@ -1,116 +1,62 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthPage } from './components/auth/AuthPage';
-import { Header } from './components/shared/Header';
-import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
-import { GuardsView } from './components/GuardsView';
-import { LocationsView } from './components/LocationsView';
-import { AttendanceView } from './components/AttendanceView';
-import { FinancialsView } from './components/FinancialsView';
-import { ReportsView } from './components/ReportsView';
-import { ClientsView } from './components/ClientsView';
-import { View } from './types';
-import './index.css';
-
-// Simple Error Boundary component
-class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
-    constructor(props: {children: React.ReactNode}) {
-        super(props);
-        this.state = { hasError: false };
-    }
-
-    static getDerivedStateFromError(_: Error) {
-        return { hasError: true };
-    }
-
-    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-        console.error('Error caught by boundary:', error, errorInfo);
-    }
-
-    render() {
-        if (this.state.hasError) {
-            return (
-                <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-                    <div className="text-center">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-4">Something went wrong</h2>
-                        <p className="text-gray-600">Please refresh the page and try again.</p>
-                    </div>
-                </div>
-            );
-        }
-
-        return this.props.children;
-    }
-}
+import { Sidebar } from './components/Sidebar';
 
 const MainApp: React.FC = () => {
     const { user, guard, loading } = useAuth();
-    const [currentView, setCurrentView] = useState<View>(View.DASHBOARD);
+    const [currentView, setCurrentView] = useState('dashboard');
 
-    // Show loading spinner while authentication is being resolved
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-100 flex items-center justify-center">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading application...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading...</p>
                 </div>
             </div>
         );
     }
 
-    // Show auth page if user is not authenticated
     if (!user || !guard) {
         return <AuthPage />;
     }
 
     const renderView = () => {
         switch (currentView) {
-            case View.DASHBOARD:
+            case 'dashboard':
                 return <Dashboard />;
-            case View.CLIENTS:
-                return <ClientsView />;
-            case View.GUARDS:
-                return <GuardsView />;
-            case View.LOCATIONS:
-                return <LocationsView />;
-            case View.ATTENDANCE:
-                return <AttendanceView />;
-            case View.FINANCIALS:
-                return <FinancialsView />;
-            case View.REPORTS:
-                return <ReportsView />;
+            case 'guards':
+                return <div className="p-6"><h1 className="text-2xl font-bold">Guards Management</h1></div>;
+            case 'locations':
+                return <div className="p-6"><h1 className="text-2xl font-bold">Locations</h1></div>;
+            case 'attendance':
+                return <div className="p-6"><h1 className="text-2xl font-bold">Attendance</h1></div>;
+            case 'financials':
+                return <div className="p-6"><h1 className="text-2xl font-bold">Financials</h1></div>;
+            case 'reports':
+                return <div className="p-6"><h1 className="text-2xl font-bold">Reports</h1></div>;
             default:
                 return <Dashboard />;
         }
     };
 
     return (
-        <div className="flex h-screen bg-background">
-            <div className="w-64 flex-shrink-0">
-                <Sidebar currentView={currentView} setView={setCurrentView} />
-            </div>
-            
-            <div className="flex-1 flex flex-col overflow-hidden">
-                <Header />
-                <main className="flex-1 overflow-x-hidden overflow-y-auto p-6">
-                    <ErrorBoundary>
-                        {renderView()}
-                    </ErrorBoundary>
-                </main>
-            </div>
+        <div className="flex h-screen bg-gray-100">
+            <Sidebar currentView={currentView} setView={setCurrentView} />
+            <main className="flex-1 overflow-y-auto">
+                {renderView()}
+            </main>
         </div>
     );
 };
 
 const App: React.FC = () => {
     return (
-        <ErrorBoundary>
-            <AuthProvider>
-                <MainApp />
-            </AuthProvider>
-        </ErrorBoundary>
+        <AuthProvider>
+            <MainApp />
+        </AuthProvider>
     );
 };
 
