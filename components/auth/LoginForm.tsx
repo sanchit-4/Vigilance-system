@@ -16,13 +16,21 @@ export const LoginForm: React.FC = () => {
         setLoading(true);
         setError('');
 
+        // Basic validation
+        if (!email || !password) {
+            setError('Please fill in all fields');
+            setLoading(false);
+            return;
+        }
+
         try {
             const { error } = await signIn(email, password);
             if (error) {
                 setError(error.message);
             }
         } catch (err) {
-            setError('An unexpected error occurred');
+            console.error('Login error:', err);
+            setError('Unable to connect to authentication service');
         } finally {
             setLoading(false);
         }

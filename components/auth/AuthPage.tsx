@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { LoginForm } from './LoginForm';
 import { SignupForm } from './SignupForm';
+import { useAuth } from '../../contexts/AuthContext';
 import { Shield } from 'lucide-react';
 
 export const AuthPage: React.FC = () => {
     const [isLogin, setIsLogin] = useState(true);
+    const { error, clearError } = useAuth();
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -22,6 +24,20 @@ export const AuthPage: React.FC = () => {
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+                    {error && (
+                        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                            <div className="flex justify-between items-center">
+                                <span>{error}</span>
+                                <button 
+                                    onClick={clearError}
+                                    className="text-red-500 hover:text-red-700"
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    
                     {isLogin ? <LoginForm /> : <SignupForm />}
                     
                     <div className="mt-6">

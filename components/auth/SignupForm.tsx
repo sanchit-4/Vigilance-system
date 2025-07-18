@@ -23,6 +23,13 @@ export const SignupForm: React.FC = () => {
         setLoading(true);
         setError('');
 
+        // Basic validation
+        if (!formData.email || !formData.password || !formData.name) {
+            setError('Please fill in all required fields');
+            setLoading(false);
+            return;
+        }
+
         if (formData.password !== formData.confirmPassword) {
             setError('Passwords do not match');
             setLoading(false);
@@ -43,7 +50,8 @@ export const SignupForm: React.FC = () => {
                 setError(error.message);
             }
         } catch (err) {
-            setError('An unexpected error occurred');
+            console.error('Signup error:', err);
+            setError('Unable to create account. Please try again.');
         } finally {
             setLoading(false);
         }
