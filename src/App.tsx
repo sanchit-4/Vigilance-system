@@ -3,10 +3,19 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthPage } from './components/auth/AuthPage';
 import { Dashboard } from './components/Dashboard';
 import { Sidebar } from './components/Sidebar';
+import { ErrorBoundary } from './components/shared/ErrorBoundary';
+import { Header } from './components/shared/Header';
+import { GuardsView } from './components/GuardsView';
+import { LocationsView } from './components/LocationsView';
+import { AttendanceView } from './components/AttendanceView';
+import { ClientsView } from './components/ClientsView';
+import { FinancialsView } from './components/FinancialsView';
+import { ReportsView } from './components/ReportsView';
+import { View } from './types';
 
 const MainApp: React.FC = () => {
     const { user, guard, loading } = useAuth();
-    const [currentView, setCurrentView] = useState('dashboard');
+    const [currentView, setCurrentView] = useState<View>(View.DASHBOARD);
 
     if (loading) {
         return (
@@ -25,18 +34,20 @@ const MainApp: React.FC = () => {
 
     const renderView = () => {
         switch (currentView) {
-            case 'dashboard':
+            case View.DASHBOARD:
                 return <Dashboard />;
-            case 'guards':
-                return <div className="p-6"><h1 className="text-2xl font-bold">Guards Management</h1></div>;
-            case 'locations':
-                return <div className="p-6"><h1 className="text-2xl font-bold">Locations</h1></div>;
-            case 'attendance':
-                return <div className="p-6"><h1 className="text-2xl font-bold">Attendance</h1></div>;
-            case 'financials':
-                return <div className="p-6"><h1 className="text-2xl font-bold">Financials</h1></div>;
-            case 'reports':
-                return <div className="p-6"><h1 className="text-2xl font-bold">Reports</h1></div>;
+            case View.GUARDS:
+                return <GuardsView />;
+            case View.LOCATIONS:
+                return <LocationsView />;
+            case View.ATTENDANCE:
+                return <AttendanceView />;
+            case View.CLIENTS:
+                return <ClientsView />;
+            case View.FINANCIALS:
+                return <FinancialsView />;
+            case View.REPORTS:
+                return <ReportsView />;
             default:
                 return <Dashboard />;
         }
@@ -45,18 +56,25 @@ const MainApp: React.FC = () => {
     return (
         <div className="flex h-screen bg-gray-100">
             <Sidebar currentView={currentView} setView={setCurrentView} />
-            <main className="flex-1 overflow-y-auto">
-                {renderView()}
-            </main>
+            <div className="flex-1 flex flex-col">
+                <Header />
+                <main className="flex-1 overflow-y-auto p-6">
+                    <ErrorBoundary>
+                        {renderView()}
+                    </ErrorBoundary>
+                </main>
+            </div>
         </div>
     );
 };
 
 const App: React.FC = () => {
     return (
-        <AuthProvider>
-            <MainApp />
-        </AuthProvider>
+        <ErrorBoundary>
+            <AuthProvider>
+                <MainApp />
+            </AuthProvider>
+        </ErrorBoundary>
     );
 };
 

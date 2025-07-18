@@ -1,6 +1,0 @@
-{
-  "name": "Vigilance: Guard Management System",
-  "description": "A comprehensive, database-driven system to manage security clients, guard profiles, location assignments, geofenced attendance, inventory, and payroll.",
-  "requestFramePermissions": [],
-  "prompt": ""
-}

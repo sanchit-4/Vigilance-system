@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
 import { Guard, Location, AttendanceRecord, InventoryItem, AssignedItem, SalaryAdvance, Deduction } from '../types';
-import { INITIAL_GUARDS, INITIAL_LOCATIONS, INITIAL_INVENTORY } from '../constants';
+import { INITIAL_GUARDS, INITIAL_LOCATIONS, INITIAL_INVENTORY } from '../lib/constants';
 
 export const useVigilanceSystem = () => {
     const [guards, setGuards] = useState<Guard[]>(INITIAL_GUARDS);
