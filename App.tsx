@@ -1,127 +1,175 @@
-import React, { useState, useCallback } from 'react';
-import { AuthProvider, useAuth } from './contexts';
-import { 
-    AuthPage, 
-    ProtectedRoute, 
-    Header, 
-    Sidebar,
-    Dashboard,
-    GuardsView,
-    LocationsView,
-    AttendanceView,
-    FinancialsView,
-    ReportsView,
-    ClientsView,
-    ErrorBoundary
-} from './components';
-import { View } from './types';
-import { Menu, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, User, MapPin, CheckSquare, DollarSign, BarChart3, Briefcase, Menu, X } from 'lucide-react';
 
-const AppContent: React.FC = () => {
-    const { user, guard, loading } = useAuth();
-    const [currentView, setCurrentView] = useState<View>(View.DASHBOARD);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-                <div className="text-center">
-                    <svg className="animate-spin h-12 w-12 text-primary mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <p className="text-gray-600">Initializing Vigilance...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (!user) {
-        return <AuthPage />;
-    }
-
-    const renderView = useCallback(() => {
-        switch (currentView) {
-            case View.DASHBOARD:
-                return <Dashboard />;
-            case View.CLIENTS:
-                return (
-                    <ProtectedRoute requiredRoles={['admin', 'supervisor']}>
-                        <ClientsView />
-                    </ProtectedRoute>
-                );
-            case View.GUARDS:
-                return (
-                    <ProtectedRoute requiredRoles={['admin', 'supervisor']}>
-                        <GuardsView />
-                    </ProtectedRoute>
-                );
-            case View.LOCATIONS:
-                return (
-                    <ProtectedRoute requiredRoles={['admin', 'supervisor']}>
-                        <LocationsView />
-                    </ProtectedRoute>
-                );
-            case View.ATTENDANCE:
-                return <AttendanceView />;
-            case View.FINANCIALS:
-                return (
-                    <ProtectedRoute requiredRoles={['admin', 'supervisor']}>
-                        <FinancialsView />
-                    </ProtectedRoute>
-                );
-            case View.REPORTS:
-                return (
-                    <ProtectedRoute requiredRoles={['admin', 'supervisor']}>
-                        <ReportsView />
-                    </ProtectedRoute>
-                );
-            default:
-                return <Dashboard />;
-        }
-    }, [currentView]);
-
-    const handleSetView = (view: View) => {
-        setCurrentView(view);
-        if (window.innerWidth < 768) {
-            setIsSidebarOpen(false);
-        }
-    };
-
-    return (
-        <div className="flex h-screen bg-gray-100 font-sans">
-            <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-sidebar text-white transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out md:relative md:translate-x-0`}>
-                <Sidebar currentView={currentView} setView={handleSetView} />
-            </div>
-
-            <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="hidden md:block">
-                    <Header />
-                </div>
-                <div className="md:hidden">
-                    <header className="flex justify-between items-center p-4 bg-surface shadow-md">
-                        <h1 className="text-xl font-bold text-primary">Vigilance</h1>
-                        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-gray-600">
-                            {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-                        </button>
-                    </header>
-                </div>
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
-                    {renderView()}
-                </main>
-            </div>
+// Simple components to test loading
+const Dashboard = () => (
+  <div className="p-6">
+    <h1 className="text-3xl font-bold text-gray-800 mb-6">Welcome to Vigilance</h1>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex items-center">
+          <div className="p-3 rounded-full bg-blue-500">
+            <User size={24} className="text-white" />
+          </div>
+          <div className="ml-4">
+            <p className="text-sm font-medium text-gray-600">Total Guards</p>
+            <p className="text-2xl font-bold text-gray-800">12</p>
+          </div>
         </div>
-    );
-};
+      </div>
+      
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex items-center">
+          <div className="p-3 rounded-full bg-green-500">
+            <MapPin size={24} className="text-white" />
+          </div>
+          <div className="ml-4">
+            <p className="text-sm font-medium text-gray-600">Locations</p>
+            <p className="text-2xl font-bold text-gray-800">8</p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex items-center">
+          <div className="p-3 rounded-full bg-indigo-500">
+            <CheckSquare size={24} className="text-white" />
+          </div>
+          <div className="ml-4">
+            <p className="text-sm font-medium text-gray-600">Attendance</p>
+            <p className="text-2xl font-bold text-gray-800">95%</p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex items-center">
+          <div className="p-3 rounded-full bg-yellow-500">
+            <DollarSign size={24} className="text-white" />
+          </div>
+          <div className="ml-4">
+            <p className="text-sm font-medium text-gray-600">Revenue</p>
+            <p className="text-2xl font-bold text-gray-800">$45K</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const ComingSoon = ({ title }: { title: string }) => (
+  <div className="p-6 text-center">
+    <h1 className="text-3xl font-bold text-gray-800 mb-4">{title}</h1>
+    <p className="text-gray-600">This feature is coming soon...</p>
+  </div>
+);
+
+type View = 'dashboard' | 'guards' | 'locations' | 'attendance' | 'financials' | 'reports' | 'clients';
 
 const App: React.FC = () => {
-    return (
-        <ErrorBoundary>
-            <AuthProvider>
-                <AppContent />
-            </AuthProvider>
-        </ErrorBoundary>
-    );
+  const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const navigationItems = [
+    { id: 'dashboard' as View, label: 'Dashboard', icon: BarChart3 },
+    { id: 'clients' as View, label: 'Clients', icon: Briefcase },
+    { id: 'guards' as View, label: 'Guards', icon: User },
+    { id: 'locations' as View, label: 'Locations', icon: MapPin },
+    { id: 'attendance' as View, label: 'Attendance', icon: CheckSquare },
+    { id: 'financials' as View, label: 'Financials', icon: DollarSign },
+    { id: 'reports' as View, label: 'Reports', icon: BarChart3 },
+  ];
+
+  const renderContent = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'guards':
+        return <ComingSoon title="Guards Management" />;
+      case 'locations':
+        return <ComingSoon title="Locations Management" />;
+      case 'attendance':
+        return <ComingSoon title="Attendance Tracking" />;
+      case 'financials':
+        return <ComingSoon title="Financial Management" />;
+      case 'reports':
+        return <ComingSoon title="Reports & Analytics" />;
+      case 'clients':
+        return <ComingSoon title="Client Management" />;
+      default:
+        return <Dashboard />;
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-900 text-white transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out md:relative md:translate-x-0`}>
+        <div className="flex items-center justify-center p-6 border-b border-gray-800">
+          <ShieldCheck size={32} className="text-blue-400" />
+          <h1 className="ml-3 text-2xl font-bold">Vigilance</h1>
+        </div>
+        
+        <nav className="mt-6">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setCurrentView(item.id);
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center px-6 py-3 text-left hover:bg-gray-800 transition-colors ${
+                  currentView === item.id ? 'bg-blue-600' : ''
+                }`}
+              >
+                <Icon size={20} className="mr-3" />
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b border-gray-200">
+          <div className="flex justify-between items-center px-6 py-4">
+            <div className="flex items-center">
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="md:hidden text-gray-600 hover:text-gray-900"
+              >
+                <Menu size={24} />
+              </button>
+              <h1 className="ml-3 text-xl font-bold text-gray-800">Vigilance Guard Management</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">Welcome, Admin</span>
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                <User size={16} className="text-white" />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+          {renderContent()}
+        </main>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+    </div>
+  );
 };
 
 export default App;
