@@ -325,7 +325,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (error) throw error;
         } catch (error) {
             console.error('Sign out error:', error);
-            setError('Failed to sign out');
+            setError('Faile
+}d to sign out');
             throw error;
         }
     };
