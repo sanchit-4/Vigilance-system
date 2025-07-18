@@ -12,6 +12,7 @@ import { ClientsView } from './components/ClientsView';
 import { FinancialsView } from './components/FinancialsView';
 import { ReportsView } from './components/ReportsView';
 import { View } from './types/index';
+import './index.css';
 
 const MainApp: React.FC = () => {
     const { user, guard, loading } = useAuth();
