@@ -129,7 +129,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } catch (error) {
             console.error('Error fetching guard data:', error);
             setGuard(null);
-    };
+            };
+    }
 
     const signIn = async (email: string, password: string) => {
         try {
