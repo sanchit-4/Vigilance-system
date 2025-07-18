@@ -386,7 +386,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             );
             if (error) throw error;
         } catch (error) {
-            console.error('Sign out error:', error);
+            console.error('Sign out
+} error:', error);
             if (error.message && error.message.includes('timed out')) {
                 setError('Connection timeout - please try again');
             } else {
