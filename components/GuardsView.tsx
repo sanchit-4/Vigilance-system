@@ -1,12 +1,12 @@
 import React from 'react';
-import { Users, Plus, Edit, Trash2, Phone, MapPin } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Phone } from 'lucide-react';
 
 export const GuardsView: React.FC = () => {
     const guards = [
-        { id: 1, name: 'John Smith', contact: '+1-555-1001', salary: 3000, category: 'Guard', status: 'Active', verification: 'Verified' },
-        { id: 2, name: 'Maria Garcia', contact: '+1-555-1002', salary: 3200, category: 'Supervisor', status: 'Active', verification: 'Verified' },
-        { id: 3, name: 'David Johnson', contact: '+1-555-1003', salary: 2900, category: 'Guard', status: 'Active', verification: 'Pending' },
-        { id: 4, name: 'Sarah Wilson', contact: '+1-555-1004', salary: 3100, category: 'Lady Guard', status: 'Active', verification: 'Verified' },
+        { id: 1, name: 'John Smith', contact: '+1-555-1001', salary: 3000, category: 'Guard' as const, status: 'Active' as const, verification: 'Verified' as const },
+        { id: 2, name: 'Maria Garcia', contact: '+1-555-1002', salary: 3200, category: 'Supervisor' as const, status: 'Active' as const, verification: 'Verified' as const },
+        { id: 3, name: 'David Johnson', contact: '+1-555-1003', salary: 2900, category: 'Guard' as const, status: 'Active' as const, verification: 'Pending' as const },
+        { id: 4, name: 'Sarah Wilson', contact: '+1-555-1004', salary: 3100, category: 'Lady Guard' as const, status: 'Active' as const, verification: 'Verified' as const },
     ];
 
     const getStatusColor = (status: string) => {

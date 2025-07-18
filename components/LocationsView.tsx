@@ -3,10 +3,10 @@ import { MapPin, Plus, Edit, Trash2, Building, Shield } from 'lucide-react';
 
 export const LocationsView: React.FC = () => {
     const locations = [
-        { id: 1, name: 'Downtown Mall', client: 'ABC Security Solutions', address: '100 Shopping Center Dr', guards: 3, status: 'Active' },
-        { id: 2, name: 'Corporate Headquarters', client: 'XYZ Corporation', address: '200 Executive Plaza', guards: 2, status: 'Active' },
-        { id: 3, name: 'Tech Campus Building A', client: 'Tech Park Management', address: '300 Innovation Way', guards: 1, status: 'Active' },
-        { id: 4, name: 'Warehouse Complex', client: 'ABC Security Solutions', address: '400 Industrial Blvd', guards: 0, status: 'Inactive' },
+        { id: 1, name: 'Downtown Mall', client: 'ABC Security Solutions', address: '100 Shopping Center Dr', guards: 3, status: 'Active' as const },
+        { id: 2, name: 'Corporate Headquarters', client: 'XYZ Corporation', address: '200 Executive Plaza', guards: 2, status: 'Active' as const },
+        { id: 3, name: 'Tech Campus Building A', client: 'Tech Park Management', address: '300 Innovation Way', guards: 1, status: 'Active' as const },
+        { id: 4, name: 'Warehouse Complex', client: 'ABC Security Solutions', address: '400 Industrial Blvd', guards: 0, status: 'Inactive' as const },
     ];
 
     const getStatusColor = (status: string) => {

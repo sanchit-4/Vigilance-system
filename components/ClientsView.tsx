@@ -3,9 +3,9 @@ import { Building, Plus, Edit, Trash2, Phone, MapPin } from 'lucide-react';
 
 export const ClientsView: React.FC = () => {
     const clients = [
-        { id: 1, name: 'ABC Security Solutions', address: '123 Business St, Downtown', phone: '+1-555-0101', locations: 2 },
-        { id: 2, name: 'XYZ Corporation', address: '456 Corporate Ave, Midtown', phone: '+1-555-0102', locations: 3 },
-        { id: 3, name: 'Tech Park Management', address: '789 Innovation Blvd, Tech District', phone: '+1-555-0103', locations: 1 },
+        { id: 1, name: 'ABC Security Solutions', address: '123 Business St, Downtown', phone: '+1-555-0101', locations: 2 as const },
+        { id: 2, name: 'XYZ Corporation', address: '456 Corporate Ave, Midtown', phone: '+1-555-0102', locations: 3 as const },
+        { id: 3, name: 'Tech Park Management', address: '789 Innovation Blvd, Tech District', phone: '+1-555-0103', locations: 1 as const },
     ];
 
     return (

@@ -3,10 +3,10 @@ import { BarChart3, FileText, Download, Calendar, TrendingUp, Users, MapPin } fr
 
 export const ReportsView: React.FC = () => {
     const reports = [
-        { id: 1, name: 'Monthly Attendance Report', type: 'Attendance', date: '2024-01-31', format: 'PDF' },
-        { id: 2, name: 'Financial Summary Q1', type: 'Financial', date: '2024-01-31', format: 'Excel' },
-        { id: 3, name: 'Guard Performance Report', type: 'Performance', date: '2024-01-30', format: 'PDF' },
-        { id: 4, name: 'Location Coverage Analysis', type: 'Coverage', date: '2024-01-29', format: 'PDF' },
+        { id: 1, name: 'Monthly Attendance Report', type: 'Attendance' as const, date: '2024-01-31', format: 'PDF' as const },
+        { id: 2, name: 'Financial Summary Q1', type: 'Financial' as const, date: '2024-01-31', format: 'Excel' as const },
+        { id: 3, name: 'Guard Performance Report', type: 'Performance' as const, date: '2024-01-30', format: 'PDF' as const },
+        { id: 4, name: 'Location Coverage Analysis', type: 'Coverage' as const, date: '2024-01-29', format: 'PDF' as const },
     ];
 
     const metrics = [

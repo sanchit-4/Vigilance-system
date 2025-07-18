@@ -3,11 +3,11 @@ import { Clock, CheckCircle, XCircle, MapPin, User } from 'lucide-react';
 
 export const AttendanceView: React.FC = () => {
     const attendanceRecords = [
-        { id: 1, guard: 'John Smith', location: 'Downtown Mall', checkIn: '08:00 AM', status: 'Approved', verification: 'Verified' },
-        { id: 2, guard: 'Maria Garcia', location: 'Corporate HQ', checkIn: '07:45 AM', status: 'Approved', verification: 'Verified' },
-        { id: 3, guard: 'David Johnson', location: 'Tech Campus', checkIn: '09:15 AM', status: 'Pending', verification: 'Pending' },
-        { id: 4, guard: 'Sarah Wilson', location: 'Downtown Mall', checkIn: '08:30 AM', status: 'Approved', verification: 'Verified' },
-        { id: 5, guard: 'Mike Brown', location: 'Corporate HQ', checkIn: '10:00 AM', status: 'Rejected', verification: 'Outside Geofence' },
+        { id: 1, guard: 'John Smith', location: 'Downtown Mall', checkIn: '08:00 AM', status: 'Approved' as const, verification: 'Verified' as const },
+        { id: 2, guard: 'Maria Garcia', location: 'Corporate HQ', checkIn: '07:45 AM', status: 'Approved' as const, verification: 'Verified' as const },
+        { id: 3, guard: 'David Johnson', location: 'Tech Campus', checkIn: '09:15 AM', status: 'Pending' as const, verification: 'Pending' as const },
+        { id: 4, guard: 'Sarah Wilson', location: 'Downtown Mall', checkIn: '08:30 AM', status: 'Approved' as const, verification: 'Verified' as const },
+        { id: 5, guard: 'Mike Brown', location: 'Corporate HQ', checkIn: '10:00 AM', status: 'Rejected' as const, verification: 'Outside Geofence' as const },
     ];
 
     const getStatusColor = (status: string) => {

@@ -138,7 +138,7 @@ export const SignupForm: React.FC = () => {
                     <input
                         id="confirmPassword"
                         name="confirmPassword"
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
                         required
                         value={formData.confirmPassword}
                         onChange={handleChange}

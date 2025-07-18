@@ -10,10 +10,10 @@ export const FinancialsView: React.FC = () => {
     };
 
     const salaryAdvances = [
-        { id: 1, guard: 'John Smith', amount: 1200, date: '2024-01-15', status: 'Active' },
-        { id: 2, guard: 'Maria Garcia', amount: 800, date: '2024-01-10', status: 'Active' },
-        { id: 3, guard: 'David Johnson', amount: 1500, date: '2024-01-08', status: 'Repaid' },
-        { id: 4, guard: 'Sarah Wilson', amount: 2300, date: '2024-01-05', status: 'Active' },
+        { id: 1, guard: 'John Smith', amount: 1200, date: '2024-01-15', status: 'Active' as const },
+        { id: 2, guard: 'Maria Garcia', amount: 800, date: '2024-01-10', status: 'Active' as const },
+        { id: 3, guard: 'David Johnson', amount: 1500, date: '2024-01-08', status: 'Repaid' as const },
+        { id: 4, guard: 'Sarah Wilson', amount: 2300, date: '2024-01-05', status: 'Active' as const },
     ];
 
     const getStatusColor = (status: string) => {
