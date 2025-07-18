@@ -8,8 +8,8 @@ interface AuthContextType {
     guard: Guard | null;
     loading: boolean;
     error: string | null;
-    signIn: (email: string, password: string) => Promise<any>;
-    signUp: (email: string, password: string, guardData: Partial<Guard>) => Promise<any>;
+    signIn: (email: string, password: string) => Promise<{ data: any; error: any }>;
+    signUp: (email: string, password: string, guardData: Partial<Guard>) => Promise<{ data: any; error: any }>;
     signOut: () => Promise<void>;
     clearError: () => void;
 }
@@ -235,4 +235,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-}
