@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         .from('guards')
                         .select('*')
                         .eq('user_id', userId)
-                        .single()
+                       .maybeSingle()
                         .then(result => result),
                     15000
                 ),
