@@ -64,7 +64,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchGuardData = async (userId: string): Promise<Guard | null> => {
         try {
             console.log('Fetching guard data for user:', userId);
-            console.log('Fetching guard data for user:', userId);
             
             const { data, error } = await withRetry(
                 () => withTimeout(
@@ -88,109 +87,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 
                 if (error.code === 'PGRST116') {
                     console.log('No guard record found for user');
-                    
-                    // Check if there's an admin record without user_id
-                    console.log('Looking for admin record without user_id...');
-                    const { data: adminRecord, error: adminError } = await withRetry(
-                        () => withTimeout(
-                            supabase
-                                .from('guards')
-                                .select('*')
-                                .eq('role', 'admin')
-                                .is('user_id', null)
-                                .single()
-                                .then(result => result),
-                            15000
-                        ),
-                        2
-                    );
-                    
-                    if (adminError) {
-                        console.error('No admin record found without user_id:', adminError);
-                        // Create a default guard record if none exists
-                        const { data: newGuard, error: createError } = await withRetry(
-                            () => withTimeout(
-                                supabase
-                                    .from('guards')
-                                    .insert([
-                                        {
-                                            user_id: userId,
-                                            name: 'New User',
-                                            role: 'guard',
-                                            base_salary: 3000,
-                                            category: 'Guard',
-                                            date_of_joining: new Date().toISOString().split('T')[0],
-                                            is_active: true,
-                                            police_verification_status: 'Pending'
-                                        }
-                                    ])
-                                    .select()
-                                    .single(),
-                                15000
-                            ),
-                            2
-                        );
-                        
-                        if (createError) {
-                            console.error('Error creating default guard record:', createError);
-                            return null;
-                        }
-                        
-                        console.log('Created default guard record:', newGuard);
-                        return newGuard;
-                    } else {
-                        console.log('Found admin record without user_id, linking it...');
-                        // Link the admin record to this user
-                        const { data: linkedAdmin, error: linkError } = await withRetry(
-                            () => withTimeout(
-                                supabase
-                                    .from('guards')
-                                    .update({ user_id: userId })
-                                    .eq('id', adminRecord.id)
-                                    .select()
-                                    .single(),
-                                15000
-                            ),
-                            2
-                        );
-                        
-                        if (linkError) {
-                            console.error('Error linking admin record:', linkError);
-                            return null;
-                        }
-                        
-                        console.log('Successfully linked admin record:', linkedAdmin);
-                        return linkedAdmin;
-                    }
-                    try {
-                        const { data: newGuard, error: createError } = await supabase
-                            .from('guards')
-                            .insert([
-                                {
-                                    user_id: userId,
-                                    name: 'New User',
-                                    role: 'guard',
-                                    base_salary: 3000,
-                                    category: 'Guard',
-                                    date_of_joining: new Date().toISOString().split('T')[0],
-                                    is_active: true,
-                                    police_verification_status: 'Pending'
-                                }
-                            ])
-                            .select()
-                            .single();
-                        
-                        if (createError) {
-                            console.error('Error creating default guard record:', createError);
-                            return null;
-                        }
-                        
-                        console.log('Created default guard record:', newGuard);
-                        return newGuard;
-                    } catch (createError) {
-                        console.error('Failed to create default guard record:', createError);
-                        return null;
-                    }
+                    // No guard record found - this is normal for new users
+                    // The record will be created during signup or profile setup
+                    console.log('No guard record exists for this user yet');
+                    return null;
                 }
                 
                 // Don't throw error for permission issues, just return null
@@ -207,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
             console.error('Failed to fetch guard data:', error);
             // Only set error for actual failures, not missing records
-            if (error.message) {
+            if (error?.message) {
                 if (error.message.includes('timed out')) {
                     setError('Connection timeout - please check your internet connection and try again');
                 } else if (!error.message.includes('No guard record')) {
@@ -248,7 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // If no guard data but user exists, allow them to continue
                 if (!guardData) {
                     console.log('User authenticated but no guard record found');
-                    // Don't set error here, let user continue and create record later
+                    // User can continue without guard record - it will be created during profile setup
                 }
             } else {
                 setGuard(null);
@@ -283,6 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         // If no guard data but user exists, allow them to continue
                         if (!guardData) {
                             console.log('User authenticated but no guard record found in state change');
+                            // User can continue without guard record
                         }
                     } else {
                         setGuard(null);
@@ -357,9 +258,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (data.user) {
                 console.log('User created successfully:', data.user.id);
                 
-                // Add a small delay to ensure user is fully created
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Create user record in users table
+                try {
+                    const { error: userError } = await withRetry(
+                        () => withTimeout(
+                            supabase
+                                .from('users')
+                                .insert([
+                                    {
+                                        id: data.user.id,
+                                        email: data.user.email
+                                    }
+                                ])
+                                .select()
+                                .single(),
+                            15000
+                        ),
+                        2
+                    );
+                    
+                    if (userError) {
+                        console.error('Failed to create user record:', userError);
+                    } else {
+                        console.log('User record created successfully');
+                    }
+                } catch (userRecordError) {
+                    console.error('Error creating user record:', userRecordError);
+                }
                 
+                // Create guard record
                 try {
                     const guardRecord = {
                         ...guardData,
@@ -375,7 +302,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     
                     console.log('Creating guard record:', guardRecord);
                     // @ts-ignore
-                    const { data: guardData, error: guardError } = await withRetry(
+                    const { data: newGuardData, error: guardError } = await withRetry(
                         (): Promise<any> => withTimeout(
                             supabase
                                 .from('guards')
@@ -393,7 +320,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         return { data, error: guardError };
                     }
                     
-                    console.log('Guard record created successfully:', guardData);
+                    console.log('Guard record created successfully:', newGuardData);
                 } catch (insertError) {
                     console.error('Failed to create guard record:', insertError);
                     return { data, error: insertError };
@@ -420,7 +347,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
             console.error('Sign out error:', error);
             // @ts-ignore
-            if (error.message && error.message.includes('timed out')) {
+            if (error?.message && error.message.includes('timed out')) {
                 setError('Connection timeout - please try again');
             } else {
                 setError('Failed to sign out');
